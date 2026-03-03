@@ -1,0 +1,12 @@
+{
+  "name": "takehome",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run build -w packages/common && npm run build -w packages/server && npm run build -w packages/client",
+    "dev:server": "npm run dev -w packages/server",
+    "dev:client": "npm run dev -w packages/client"
+  }
+}
