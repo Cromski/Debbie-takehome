@@ -1,7 +1,8 @@
 import { useState } from "react";
 import type { Case, CreateCaseInput } from "@takehome/common";
-import { api } from "../api";
+import { ApiRequestError, api } from "../api";
 import { Card, Table, Form, Input, Button, Subtitle, Label } from "../styles";
+import { formatIsoDate } from "../util/date";
 
 export function CaseList({
   cases,
@@ -17,16 +18,31 @@ export function CaseList({
     debtor_name: "",
     created_at: new Date().toISOString().split("T")[0],
   });
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [errorIssues, setErrorIssues] = useState<string[]>([]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    await api.post("/cases", form);
-    setForm({
-      reference: "",
-      debtor_name: "",
-      created_at: new Date().toISOString().split("T")[0],
-    });
-    onCreated();
+    setErrorMessage(null);
+    setErrorIssues([]);
+
+    try {
+      await api.post("/cases", form);
+      setForm({
+        reference: "",
+        debtor_name: "",
+        created_at: new Date().toISOString().split("T")[0],
+      });
+      onCreated();
+    } catch (error) {
+      if (error instanceof ApiRequestError) {
+        setErrorMessage(error.body?.message ?? "Could not create case.");
+        setErrorIssues(error.body?.issues?.map((issue) => issue.message) ?? []);
+        return;
+      }
+
+      setErrorMessage("Could not create case.");
+    }
   }
 
   return (
@@ -50,7 +66,7 @@ export function CaseList({
               >
                 <td>{c.reference}</td>
                 <td>{c.debtor_name}</td>
-                <td>{c.created_at}</td>
+                <td>{formatIsoDate(c.created_at)}</td>
               </tr>
             ))}
           </tbody>
@@ -59,6 +75,12 @@ export function CaseList({
 
       <Card>
         <Label>Create case</Label>
+        {errorMessage && (
+          <p style={{ color: "#b42318", marginTop: 0 }}>
+            {errorMessage}
+            {errorIssues.length > 0 && `: ${errorIssues.join("; ")}`}
+          </p>
+        )}
         <Form onSubmit={handleSubmit}>
           <Input
             placeholder="Reference"

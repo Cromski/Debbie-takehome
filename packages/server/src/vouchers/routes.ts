@@ -1,31 +1,69 @@
 import { Router, type Request } from "express";
-import { VoucherType } from "@takehome/common";
+import { createVoucherInputSchema, idParamSchema } from "@takehome/common";
+import { deleteVoucher } from "./model/delete.js";
+import { ZodError } from "zod";
 import { createVoucher } from "./model/create.js";
 import { getVouchersByCaseId } from "./model/get.js";
 
 const router = Router({ mergeParams: true });
 
-router.get("/", async (req: Request<{ id: string }>, res) => {
-  const vouchers = await getVouchersByCaseId(req.params.id);
-  res.json(vouchers);
+router.get("/", async (req, res) => {
+  try {
+    const { id } = idParamSchema.parse(req.params);
+    const vouchers = await getVouchersByCaseId(id);
+    res.json(vouchers);
+  } catch (error) {
+    if (error instanceof ZodError) {
+      res.status(400).json({
+        message: "Invalid case id",
+        issues: error.issues,
+      });
+      return;
+    }
+
+    throw error;
+  }
 });
 
-router.post("/", async (req: Request<{ id: string }>, res) => {
-  const { type_id, annual_interest_rate, reference_voucher_id } = req.body;
-  const isInterest = type_id === VoucherType.Interest;
+router.post("/", async (req, res) => {
+  try {
+    const { id } = idParamSchema.parse(req.params);
+    const input = createVoucherInputSchema.parse(req.body);
+    const created = await createVoucher(id, input);
+    res.status(201).json(created);
+  } catch (error) {
+    if (error instanceof ZodError) {
+      res.status(400).json({
+        message: "Invalid voucher request",
+        issues: error.issues,
+      });
+      return;
+    }
 
-  if (!isInterest && annual_interest_rate != null) {
-    res.status(400).json({ message: "annual_interest_rate is only allowed on interest vouchers" });
-    return;
+    throw error;
   }
+});
 
-  if (!isInterest && reference_voucher_id != null) {
-    res.status(400).json({ message: "reference_voucher_id is only allowed on interest vouchers" });
-    return;
+router.delete("/:voucherId", async (req, res) => {
+  try {
+    const { id: voucherId } = idParamSchema.parse({ id: req.params.voucherId });
+    const deleted = await deleteVoucher(voucherId);
+    if (!deleted) {
+      res.status(404).json({ message: "Voucher not found" });
+      return;
+    }
+    res.json(deleted);
+  } catch (error) {
+    if (error instanceof ZodError) {
+      res.status(400).json({
+        message: "Invalid voucher id",
+        issues: error.issues,
+      });
+      return;
+    }
+
+    throw error;
   }
-
-  const created = await createVoucher(req.params.id, req.body);
-  res.status(201).json(created);
 });
 
 export default router;
