@@ -17,7 +17,7 @@
 - Forbedret UI ved Add voucher, der nu kun viser de relevante felter for valgt voucher type
 - Ændret dato-visning fra ISO strings til mere læsbart YYYY-MM-DD
 
-## Reflektioner
+## Refleksioner
 
 ### Hvilke edge case eller problemer har du lagt mærke til som du ikke nåede at håndtere?
 
